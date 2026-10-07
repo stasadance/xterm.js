@@ -92,6 +92,12 @@ export class SelectionService extends Disposable implements ISelectionService {
   private _dragScrollIntervalTimer: number | undefined;
 
   /**
+   * Whether a Linux mouse selection changed during the current drag and still needs to be
+   * registered with the OS once the mouse button is released.
+   */
+  private _isLinuxMouseSelectionPending: boolean = false;
+
+  /**
    * The animation frame ID used for refreshing the selection.
    */
   private _refreshAnimationFrame: number | undefined;
@@ -267,6 +273,7 @@ export class SelectionService extends Disposable implements ISelectionService {
   public clearSelection(): void {
     this._model.clearSelection();
     this._removeMouseDownListeners();
+    this._isLinuxMouseSelectionPending = false;
     this.refresh();
     this._onSelectionChange.fire();
   }
@@ -284,11 +291,22 @@ export class SelectionService extends Disposable implements ISelectionService {
 
     // If the platform is Linux and the refresh call comes from a mouse event,
     // we need to update the selection for middle click to paste selection.
+    // While dragging this is deferred to mouseup, as building the selection
+    // text and selecting it in the textarea on every mousemove is expensive.
     if (Browser.isLinux && isLinuxMouseSelection) {
-      const selectionText = this.selectionText;
-      if (selectionText.length) {
-        this._onLinuxMouseSelection.fire(this.selectionText);
+      if (this._dragScrollIntervalTimer !== undefined) {
+        this._isLinuxMouseSelectionPending = true;
+      } else {
+        this._fireLinuxMouseSelection();
       }
+    }
+  }
+
+  private _fireLinuxMouseSelection(): void {
+    this._isLinuxMouseSelectionPending = false;
+    const selectionText = this.selectionText;
+    if (selectionText.length) {
+      this._onLinuxMouseSelection.fire(selectionText);
     }
   }
 
@@ -704,6 +722,10 @@ export class SelectionService extends Disposable implements ISelectionService {
     const timeElapsed = event.timeStamp - this._mouseDownTimeStamp;
 
     this._removeMouseDownListeners();
+
+    if (this._isLinuxMouseSelectionPending) {
+      this._fireLinuxMouseSelection();
+    }
 
     if (this.selectionText.length <= 1 && timeElapsed < ALT_CLICK_MOVE_CURSOR_TIME && event.altKey && this._optionsService.rawOptions.altClickMovesCursor) {
       if (this._bufferService.buffer.ybase === this._bufferService.buffer.ydisp) {
