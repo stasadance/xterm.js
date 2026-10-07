@@ -1,0 +1,30 @@
+{
+  "name": "@xterm/xterm",
+  "description": "Full xterm terminal, in your browser",
+  "version": "6.0.0",
+  "main": "lib/xterm.js",
+  "module": "lib/xterm.mjs",
+  "style": "css/xterm.css",
+  "types": "typings/xterm.d.ts",
+  "repository": "https://github.com/xtermjs/xterm.js",
+  "license": "MIT",
+  "workspaces": [
+    "addons/*"
+  ],
+  "keywords": [
+    "cli",
+    "command-line",
+    "console",
+    "pty",
+    "shell",
+    "ssh",
+    "styles",
+    "terminal-emulator",
+    "terminal",
+    "tty",
+    "vt100",
+    "webgl",
+    "xterm"
+  ],
+  "gitHead": "5b5528ea8211d018bc7486adf4321097fee5389e"
+}

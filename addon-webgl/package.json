@@ -1,0 +1,20 @@
+{
+  "name": "@xterm/addon-webgl",
+  "version": "0.19.0",
+  "author": {
+    "name": "The xterm.js authors",
+    "url": "https://xtermjs.org/"
+  },
+  "main": "lib/addon-webgl.js",
+  "module": "lib/addon-webgl.mjs",
+  "types": "typings/addon-webgl.d.ts",
+  "repository": "https://github.com/xtermjs/xterm.js/tree/master/addons/addon-webgl",
+  "license": "MIT",
+  "keywords": [
+    "terminal",
+    "webgl",
+    "xterm",
+    "xterm.js"
+  ],
+  "gitHead": "5b5528ea8211d018bc7486adf4321097fee5389e"
+}
