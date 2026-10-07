@@ -37,6 +37,13 @@ export class WebglRenderer extends Disposable implements IRenderer {
   private _observerDisposable = this._register(new MutableDisposable());
 
   private _model: RenderModel = new RenderModel();
+  /**
+   * The selected column range of each viewport row as [start, end) pairs, with -1 for rows without
+   * a selection, and the viewport position they were computed at. Used to only redraw the rows
+   * whose selection changed.
+   */
+  private _selectionSpans: Int32Array = new Int32Array(0);
+  private _selectionSpansViewportY: number = -1;
   private _workCell: ICellData = new CellData();
   private _workCell2: ICellData = new CellData();
   private _cellColorResolver: CellColorResolver;
@@ -230,7 +237,59 @@ export class WebglRenderer extends Disposable implements IRenderer {
       l.handleSelectionChanged(this._terminal, start, end, columnSelectMode);
     }
     this._model.selection.update(this._core, start, end, columnSelectMode);
-    this._requestRedrawViewport();
+    this._requestRedrawSelection();
+  }
+
+  /**
+   * Requests a redraw of only the rows whose selected range changed since the last selection
+   * change, falling back to the whole viewport when the viewport scrolled or resized in between.
+   */
+  private _requestRedrawSelection(): void {
+    const rows = this._terminal.rows;
+    const cols = this._terminal.cols;
+    const viewportY = this._terminal.buffer.active.viewportY;
+    const spans = new Int32Array(rows * 2);
+    const selection = this._model.selection;
+    for (let y = 0; y < rows; y++) {
+      let startX = -1;
+      let endX = -1;
+      if (selection.hasSelection) {
+        if (selection.columnSelectMode) {
+          if (y >= selection.viewportCappedStartRow && y <= selection.viewportCappedEndRow) {
+            startX = Math.min(selection.startCol, selection.endCol);
+            endX = Math.max(selection.startCol, selection.endCol);
+          }
+        } else if (y >= selection.viewportStartRow && y <= selection.viewportEndRow) {
+          startX = y === selection.viewportStartRow ? selection.startCol : 0;
+          endX = y === selection.viewportEndRow ? selection.endCol : cols;
+        }
+      }
+      spans[y * 2] = startX;
+      spans[y * 2 + 1] = endX;
+    }
+
+    const previous = this._selectionSpans;
+    const isComparable = previous.length === spans.length && this._selectionSpansViewportY === viewportY;
+    this._selectionSpans = spans;
+    this._selectionSpansViewportY = viewportY;
+    if (!isComparable) {
+      this._requestRedrawViewport();
+      return;
+    }
+
+    let start = -1;
+    let end = -1;
+    for (let y = 0; y < rows; y++) {
+      if (previous[y * 2] !== spans[y * 2] || previous[y * 2 + 1] !== spans[y * 2 + 1]) {
+        if (start === -1) {
+          start = y;
+        }
+        end = y;
+      }
+    }
+    if (start !== -1) {
+      this._onRequestRedraw.fire({ start, end });
+    }
   }
 
   public handleCursorMove(): void {
